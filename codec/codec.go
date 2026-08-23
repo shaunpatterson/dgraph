@@ -260,11 +260,12 @@ func (d *Decoder) SeekToBlock(uid uint64, whence seekPos) []uint64 {
 	if d.blockIdx != prevBlockIdx {
 		d.UnpackBlock() // And get all their uids.
 	}
-
+	if len(d.uids) == 0 {
+		return d.uids
+	}
 	if uid <= d.uids[len(d.uids)-1] {
 		return d.uids
 	}
-
 	// Could not find any uid in the block, which is >= uid. The next block might still have valid
 	// entries > uid.
 	return d.Next()
@@ -347,7 +348,7 @@ func (d *Decoder) Uids() []uint64 {
 // If there are no such blocks i.e. seek < base of first block, it returns uids of first
 // block. LinearSeek is used to get closest uids which are >= seek.
 func (d *Decoder) LinearSeek(seek uint64) []uint64 {
-	for {
+	for d.Valid() {
 		v := d.PeekNextBase()
 		if seek < v {
 			break
@@ -357,8 +358,6 @@ func (d *Decoder) LinearSeek(seek uint64) []uint64 {
 
 	return d.UnpackBlock()
 }
-
-// PeekNextBase returns the base of the next block without advancing the decoder.
 func (d *Decoder) PeekNextBase() uint64 {
 	bidx := d.blockIdx + 1
 	if bidx < len(d.Pack.Blocks) {
@@ -404,6 +403,12 @@ func EncodeFromBuffer(buf []byte, blockSize int) *pb.UidPack {
 	var prev uint64
 	for len(buf) > 0 {
 		uid, n := binary.Uvarint(buf)
+		// Guard against malformed uvarints (continuation bit set without a
+		// following byte). Without this, binary.Uvarint returns n=0 and we
+		// would loop forever emitting zero-valued uids.
+		if n <= 0 {
+			break
+		}
 		buf = buf[n:]
 
 		next := prev + uid
@@ -412,7 +417,6 @@ func EncodeFromBuffer(buf []byte, blockSize int) *pb.UidPack {
 	}
 	return enc.Done()
 }
-
 // ApproxLen would indicate the total number of UIDs in the pack. Can be used for int slice
 // allocations.
 func ApproxLen(pack *pb.UidPack) int {

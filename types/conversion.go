@@ -64,7 +64,13 @@ func ParseVFloat(s string) ([]float32, error) {
 			if err != nil {
 				return nil, cannotConvertToVFloat(s)
 			}
-			result[i] = float32(val)
+			f32 := float32(val)
+			// Reject non-finite values: storing NaN/Inf silently poisons vector
+			// distance ordering and breaks the invariant callers expect.
+			if math.IsNaN(float64(f32)) || math.IsInf(float64(f32), 0) {
+				return nil, cannotConvertToVFloat(s)
+			}
+			result[i] = f32
 		}
 		return result, nil
 	}
@@ -82,7 +88,11 @@ func ParseVFloat(s string) ([]float32, error) {
 			if err != nil {
 				return nil, cannotConvertToVFloat(s)
 			}
-			result = append(result, float32(val))
+			f32 := float32(val)
+			if math.IsNaN(float64(f32)) || math.IsInf(float64(f32), 0) {
+				return nil, cannotConvertToVFloat(s)
+			}
+			result = append(result, f32)
 		}
 	}
 	return result, nil

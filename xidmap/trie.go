@@ -48,9 +48,11 @@ func (t *Trie) Get(key string) uint64 {
 
 // Put would store the UID for the key.
 func (t *Trie) Put(key string, uid uint64) {
+	if len(key) == 0 {
+		return
+	}
 	t.put(t.root, key, uid)
 }
-
 // Size returns the size of Arena used by this Trie so far.
 func (t *Trie) Size() uint32 {
 	return uint32(t.buf.LenNoPadding())

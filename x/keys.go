@@ -93,30 +93,52 @@ func AttrInRootNamespace(attr string) string {
 }
 
 // ParseNamespaceAttr returns the namespace and attr from the given value.
+// If attr has no namespace separator, the namespace defaults to 0 and attr
+// is returned as the whole input. This guards against panics from
+// splits[1] when callers pass bare predicate/type names.
 func ParseNamespaceAttr(attr string) (uint64, string) {
 	splits := strings.SplitN(attr, NsSeparator, 2)
+	if len(splits) < 2 {
+		return 0, attr
+	}
 	return strToUint(splits[0]), splits[1]
 }
 
+// ParseNamespaceBytes returns the namespace (8 bytes) and attr from the given
+// value. If attr has no namespace separator, the namespace defaults to zero.
 func ParseNamespaceBytes(attr string) ([]byte, string) {
 	splits := strings.SplitN(attr, NsSeparator, 2)
+	if len(splits) < 2 {
+		return make([]byte, 8), attr
+	}
 	ns := make([]byte, 8)
 	binary.BigEndian.PutUint64(ns, strToUint(splits[0]))
 	return ns, splits[1]
 }
 
-// ParseAttr returns the attr from the given value.
+// ParseAttr returns the attr from the given value. If attr has no namespace
+// separator, attr is returned unchanged.
 func ParseAttr(attr string) string {
-	return strings.SplitN(attr, NsSeparator, 2)[1]
+	parts := strings.SplitN(attr, NsSeparator, 2)
+	if len(parts) < 2 {
+		return attr
+	}
+	return parts[1]
 }
 
-// ParseNamespace returns the namespace from the given value.
+// ParseNamespace returns the namespace from the given value. If attr has no
+// namespace separator, 0 is returned.
 func ParseNamespace(attr string) uint64 {
-	return strToUint(strings.SplitN(attr, NsSeparator, 2)[0])
+	parts := strings.SplitN(attr, NsSeparator, 2)
+	if len(parts) < 2 {
+		return 0
+	}
+	return strToUint(parts[0])
 }
 
+// ParseAttrList parses a list of attr strings.
 func ParseAttrList(attrs []string) []string {
-	var resp []string
+	resp := make([]string, 0, len(attrs))
 	for _, attr := range attrs {
 		resp = append(resp, ParseAttr(attr))
 	}
@@ -132,10 +154,9 @@ func strToUint(s string) uint64 {
 func uintToStr(ns uint64) string {
 	return strconv.FormatUint(ns, 16)
 }
-
 func IsReverseAttr(attr string) bool {
-	pred := strings.SplitN(attr, NsSeparator, 2)[1]
-	return pred[0] == '~'
+	pred := ParseAttr(attr)
+	return len(pred) > 0 && pred[0] == '~'
 }
 
 func writeAttr(buf []byte, attr string) []byte {

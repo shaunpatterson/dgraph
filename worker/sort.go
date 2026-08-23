@@ -46,6 +46,9 @@ type sortresult struct {
 
 // SortOverNetwork sends sort query over the network.
 func SortOverNetwork(ctx context.Context, q *pb.SortMessage) (*pb.SortResult, error) {
+	if len(q.Order) == 0 {
+		return &emptySortResult, errors.New("SortMessage must include at least one Order entry")
+	}
 	gid, err := groups().BelongsToReadOnly(q.Order[0].Attr, q.ReadTs)
 	if err != nil {
 		return &emptySortResult, err
@@ -90,7 +93,9 @@ func (w *grpcWorker) Sort(ctx context.Context, s *pb.SortMessage) (*pb.SortResul
 	if ctx.Err() != nil {
 		return &emptySortResult, ctx.Err()
 	}
-
+	if len(s.Order) == 0 {
+		return &emptySortResult, errors.New("SortMessage must include at least one Order entry")
+	}
 	// Manually extract trace context from gRPC metadata for cross-alpha tracing
 	ctx = x.ExtractTraceContext(ctx)
 
@@ -492,6 +497,9 @@ func multiSort(ctx context.Context, r *sortresult, ts *pb.SortMessage) error {
 // enough for our pagination params. When all the UID lists are done, we stop
 // iterating over the index.
 func processSort(ctx context.Context, ts *pb.SortMessage) (*pb.SortResult, error) {
+	if len(ts.Order) == 0 {
+		return nil, errors.New("SortMessage must include at least one Order entry")
+	}
 	span := trace.SpanFromContext(ctx)
 	stop := x.SpanTimer(span, "processSort")
 	defer stop()

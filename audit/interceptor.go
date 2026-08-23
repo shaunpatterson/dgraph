@@ -335,7 +335,7 @@ func checkRequestBody(reqType string, path string, body string) string {
 	case Http:
 		if path == "/admin" {
 			return maskPasswordFieldsInGQL(body)
-		} else if path == "/grapqhl" {
+	} else if path == "/graphql" {
 			regex, err := regexp.Compile(
 				`check[\s]?(.*?)[\s]?Password[\s]?(.*?)[\s]?:[\s]?(.*?)[\s]?"[\s]?(.*?)[\s]?"`)
 			if err != nil {
